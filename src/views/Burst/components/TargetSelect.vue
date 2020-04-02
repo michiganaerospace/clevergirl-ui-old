@@ -103,7 +103,7 @@ export default {
           this.resultsMessage = 'No Results'  // now it is not targets fault
         });
         d3.select('input.SmSearch').dispatch('keyup');
-      }, 750),
+      }, 750), // 750 milliseconds wait until we poll the API.
     );
 
   },
