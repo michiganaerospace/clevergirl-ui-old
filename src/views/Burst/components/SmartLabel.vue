@@ -12,12 +12,11 @@ var LabelBox = require('../api/LabelBox.js');
 export default {
   components: {},
 
-  props: ['imageUrl'],
+  props: ['imageUrl', 'target'],
 
   data() {
     return {
       labels: [],
-      currentTarget: {common_name: 'White tailed deer'},
       options: {
         target: 'label-container',
         targetImageId: 'active-image',
@@ -29,6 +28,9 @@ export default {
   },
 
   watch: {
+    target: function() {
+      this.box.updateTarget(this.target)
+    },
     imageUrl: function() {
       this.initLabeler();
     },
@@ -65,6 +67,7 @@ export default {
     this.initLabeler();
     var img = document.getElementById(this.options.targetImageId);
     img.onload = this.initLabeler;
+    d3.select('aside.SmColumnBoxRight').remove() // how to get rid of this?
   },
 };
 </script>
@@ -72,10 +75,12 @@ export default {
 <style>
 .image-box {
   border: 2px solid black;
-  max-height: 700px;
+  height: 600px;
+  float: right;
 }
 .label-container {
   position: relative;
+  float: right;
 }
 #canvas {
   position: absolute;

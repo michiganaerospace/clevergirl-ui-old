@@ -4,10 +4,11 @@
       v-if="value"
       :class="{highlightSelection: expanded}"
       class="selectionClass"
-      @click="expanded = !expanded"
+      @click="expandTargetSelect"
     >
       <div class="dot" :style="{background: 'blue'}"></div>
-      {{ value.common_name }} &nbsp; (<em>{{ value.scientific_name }}</em>)
+      {{ value.common_name }} &nbsp; (<em>{{ value.scientific_name }}</em
+      >)
       <SmIcon
         class="SmDropdownChevron"
         :class="{chevronRotate: expanded}"
@@ -40,9 +41,12 @@
           @click="selectTarget(result)"
         >
           <div class="dot" :style="{background: 'red'}"></div>
-          {{ result.common_name }} (<em>{{ result.scientific_name }}</em>)
+          {{ result.common_name }} (<em>{{ result.scientific_name }}</em
+          >)
         </div>
-        <div v-if="results.length == 0" class="noResult">{{ resultsMessage }}</div>
+        <div v-if="results.length == 0" class="noResult">
+          {{ resultsMessage }}
+        </div>
       </div>
     </div>
   </div>
@@ -50,7 +54,7 @@
 
 <script>
 import {searchTargets} from '../api/api.js';
-import {getAllTargets} from '../api/api.js';
+import {getAllTargets, uniqueTargets} from '../api/api.js';
 
 export default {
   name: 'TargetSelect',
@@ -60,6 +64,7 @@ export default {
       expanded: false,
       results: [],
       targets: [],
+      core_targets: [],
     };
   },
   props: {
@@ -68,6 +73,20 @@ export default {
     },
   },
   methods: {
+    expandTargetSelect() {
+      const sleep = milliseconds => {
+        return new Promise(resolve => setTimeout(resolve, milliseconds));
+      };
+      this.expanded = !this.expanded;
+      if (this.expanded) {
+        sleep(300).then(() => {
+          // wait for element to appear! (hacky, hacky, hacky!)
+          d3.select('input.SmSearch')
+            .node()
+            .focus();
+        });
+      }
+    },
     selectTarget(result) {
       this.$emit('input', result);
       this.expanded = false;
@@ -77,6 +96,14 @@ export default {
     },
   },
   created: function() {
+    getAllTargets().then(res => {
+      if (res.data.length > 0) {
+        this.core_targets = res.data;
+        this.targets = res.data;
+        this.results = res.data;
+        this.$emit('input', this.targets[42]);
+      }
+    });
 
     function debounce(callback, wait) {
       let timeout;
@@ -89,23 +116,22 @@ export default {
 
     window.addEventListener(
       'keyup',
-      debounce(() => {
-        console.log('Sending API call.');
+      debounce(e => {
         var searchText = d3.select('input.SmSearch').property('value');
-        this.resultsMessage = 'Searching Database. Please Wait...'
+        this.resultsMessage = 'Searching Database. Please Wait...';
+        if (this.results.length > 0) {
+          return;
+        }
         searchTargets(searchText).then(res => {
-          console.log('Searched for ' + searchText + '.');
-          console.log(this.targets.length);
           if (res.data.length > 0) {
-            this.targets = res.data;
-            this.results = res.data;
+            this.targets = uniqueTargets(res.data.concat(this.core_targets));
+            this.results = this.targets;
           }
-          this.resultsMessage = 'No Results'  // now it is not targets fault
+          this.resultsMessage = 'No Results'; // now it is not targets fault
         });
         d3.select('input.SmSearch').dispatch('keyup');
       }, 750), // 750 milliseconds wait until we poll the API.
     );
-
   },
 };
 </script>

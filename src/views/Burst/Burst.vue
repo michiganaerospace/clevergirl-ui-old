@@ -15,8 +15,8 @@
           }}/{{ burst.images.length }})
         </small>
         <target-select
-          v-model='currentTarget'
-          @input='updateTarget'
+          v-model="currentTarget"
+          @input="updateTarget"
         ></target-select>
       </header>
 
@@ -34,9 +34,11 @@
               />
             </SmCard>
           </template>
-          <!-- <img id="active-image" class="image-box" :src="currentImageUrl" /> -->
-          <!-- <labeled-image :image-url="currentImageUrl"></labeled-image> -->
-          <!-- <smart-label :image-url="currentImageUrl"></smart-label> -->
+          <smart-label
+            :image-url="currentImageUrl"
+            :target="currentTarget"
+          ></smart-label>
+          <template #right class="invisible"> </template>
         </SmColumnBox>
       </main>
     </div>
@@ -62,7 +64,7 @@ export default {
       imagesLoaded: false,
       camera: {id: 0},
       targetSelected: false,
-      currentTarget: null
+      currentTarget: null,
     };
   },
 
@@ -70,8 +72,8 @@ export default {
 
   methods: {
     updateTarget(currentTarget) {
-      this.currentTarget = currentTarget
-      console.log(currentTarget)
+      this.currentTarget = currentTarget;
+      console.log(currentTarget);
     },
     loadBurst() {
       getBurst(this.burstId)
@@ -155,15 +157,15 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
 .sidebox {
   width: 250px;
 }
 .leftbox {
-  width: 200px;
+  width: 225px;
 }
 .image-preview {
-  width: 175px;
+  width: 200px;
   margin-bottom: 8px;
   margin-top: 8px;
 }
@@ -179,5 +181,11 @@ export default {
 .image-box {
   border: 2px solid black;
   max-height: 700px;
+}
+.SmColumnBoxRight {
+  padding: 0px;
+}
+.invisible {
+  display: none;
 }
 </style>

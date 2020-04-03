@@ -216,7 +216,7 @@ LabelBox.prototype.updateLabels = function() {
       secretText.remove(); // remove the secret text
       return Math.max(
         textWidth + 30,
-        Math.max(Math.abs(d.width)+1 - self.options.handleSize / 2, 0),
+        Math.max(Math.abs(d.width) + 1 - self.options.handleSize / 2, 0),
       );
       return Math.max(Math.abs(d.width) - self.options.handleSize / 2, 0);
     })
@@ -235,7 +235,10 @@ LabelBox.prototype.updateLabels = function() {
       }
     });
 
-  d3.select('body').on('keydown', function() {
+  d3.select('body').on('keydown', function(e) {
+    if (d3.event.code != 'Backspace' || d3.event.target.nodeName == 'INPUT') {
+      return;
+    }
     d3.selectAll('text,label,rect')
       .filter(d => {
         return d.isSelected;
@@ -255,9 +258,12 @@ LabelBox.prototype.updateLabels = function() {
       d3.event.preventDefault();
       d3.event.stopPropagation();
       d.isSelected = !d.isSelected;
-      d3.selectAll('rect.label,rect.text-rect,rect.handle').classed('selected', d => {
-        return d.isSelected;
-      });
+      d3.selectAll('rect.label,rect.text-rect,rect.handle').classed(
+        'selected',
+        d => {
+          return d.isSelected;
+        },
+      );
     })
     .call(
       d3
@@ -285,7 +291,7 @@ LabelBox.prototype.updateLabels = function() {
       } else {
         return d.y - 9;
       }
-    })
+    });
 }; // updateLabels
 
 LabelBox.prototype.makeAddLabel = function() {
@@ -302,7 +308,8 @@ LabelBox.prototype.makeAddLabel = function() {
       height: 1,
       isActive: true,
       isSelected: false,
-      targetName: 'White Tailed Deer',
+      targetName: self.context.target.common_name,
+      targetId: self.context.target.id,
     };
     self.context.labels.push(label);
     self.updateLabels();
@@ -421,6 +428,19 @@ LabelBox.prototype.makeDragLabel = function() {
   };
 
   return {start: start, drag: drag, end: end};
+};
+
+LabelBox.prototype.updateTarget = function(currentTarget) {
+  // Update all currently selected labels with the new target.
+  d3.selectAll('rect.label')
+    .filter(d => {
+      return d.isSelected;
+    })
+    .each(d => {
+      d.targetName = currentTarget.common_name;
+      d.target_id = currentTarget.id;
+    });
+  this.updateLabels();
 };
 
 module.exports = LabelBox;

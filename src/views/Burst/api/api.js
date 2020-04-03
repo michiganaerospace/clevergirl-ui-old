@@ -16,4 +16,12 @@ function getAllTargets(search) {
   return axios(request);
 }
 
-export {getBurst, searchTargets, getAllTargets};
+function uniqueTargets(listOfTargets) {
+  var uniqueTargets = Array.from(new Set(listOfTargets.map(a => a.id)))
+ .map(id => {
+   return listOfTargets.find(a => a.id === id)
+ })
+  return uniqueTargets
+}
+
+export {getBurst, searchTargets, getAllTargets, uniqueTargets};
