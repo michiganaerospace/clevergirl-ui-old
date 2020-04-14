@@ -1,4 +1,4 @@
-const APIPREFIX = 'http://127.0.0.1:9000';
+const APIPREFIX = process.env.VUE_APP_APIPREFIX
 
 function verifyUser() {
   var token = localStorage.getItem('token');

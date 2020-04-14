@@ -35,8 +35,8 @@
             </SmCard>
           </template>
           <smart-label
-            :image-url="currentImageUrl"
             :target="currentTarget"
+            :current-image='currentImage'
           ></smart-label>
           <template #right class="invisible"> </template>
         </SmColumnBox>
@@ -68,7 +68,11 @@ export default {
     };
   },
 
-  watch: {},
+  watch: {
+    currentImage() {
+      console.log(this.currentImage)
+    }
+  },
 
   methods: {
     updateTarget(currentTarget) {
@@ -163,6 +167,8 @@ export default {
 }
 .leftbox {
   width: 225px;
+  max-height: 600px;
+  overflow: scroll;
 }
 .image-preview {
   width: 200px;

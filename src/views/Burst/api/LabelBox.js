@@ -1,4 +1,5 @@
 // Handle label box drawing for CLEVERGIRL.
+var Emitter = require('./wildemitter.js');
 
 function LabelBox(context, options) {
   d3.select('#' + options.canvasId).remove(); // get rid of any existing canvas
@@ -9,8 +10,18 @@ function LabelBox(context, options) {
   this.height = imageSize.height;
   this.width = imageSize.width;
   this.createSVG();
+  // this.augmentLabels()
   this.updateLabels();
 }
+
+Emitter.mixin(LabelBox); // build in some event capabilities.
+
+LabelBox.prototype.augmentLabels = function() {
+  this.context.labels.forEach(label => {
+    label.isSelected = false;
+    label.isActive = false;
+  });
+};
 
 LabelBox.prototype.createSVG = function() {
   var self = this;
@@ -111,6 +122,16 @@ LabelBox.prototype.mousePosition = function() {
 
 LabelBox.prototype.updateLabels = function() {
   var self = this;
+
+  d3.selectAll('rect.label').each(d => {
+    d.x = d.x_frac * self.width;
+    d.y = d.y_frac * self.height;
+    d.x0 = d.x0_frac * self.width;
+    d.y0 = d.y0_frac * self.height;
+    d.width = d.width_frac * self.width;
+    d.height = d.height_frac * self.height;
+  });
+
   updateCrosshair = self.makeCrosshairUpdate();
   onLabelAdd = d3
     .select('#canvas')
@@ -206,7 +227,7 @@ LabelBox.prototype.updateLabels = function() {
       var secretText = d3
         .select('body')
         .append('text')
-        .text(d.targetName)
+        .text(d.target.common_name)
         .attr('class', 'text-label-secret secret')
         .attr('opacity', 0);
       var textWidth = d3
@@ -237,6 +258,7 @@ LabelBox.prototype.updateLabels = function() {
 
   d3.select('body').on('keydown', function(e) {
     if (d3.event.code != 'Backspace' || d3.event.target.nodeName == 'INPUT') {
+      // Allow user to delete if editing an INPUT field.
       return;
     }
     d3.selectAll('text,label,rect')
@@ -247,6 +269,7 @@ LabelBox.prototype.updateLabels = function() {
         var idx = self.context.labels.indexOf(d);
         if (idx > -1) {
           self.context.labels.splice(idx, 1);
+          self.emit('deleteLabel', d);
         }
       })
       .remove();
@@ -276,7 +299,7 @@ LabelBox.prototype.updateLabels = function() {
   // Update text-label
   d3.selectAll('.text-label')
     .text(d => {
-      return d.targetName;
+      return d.target.common_name;
     })
     .attr('x', d => {
       var offset = self.options.handleSize;
@@ -306,10 +329,16 @@ LabelBox.prototype.makeAddLabel = function() {
       y0: m.y,
       width: 1,
       height: 1,
+      x_frac: m.x / self.width,
+      y_frac: m.x / self.height,
+      x0_frac: m.x / self.width,
+      y0_frac: m.x / self.height,
+      height_frac: 1 / self.height,
+      width_frac: 1 / self.width,
       isActive: true,
       isSelected: false,
-      targetName: self.context.target.common_name,
-      targetId: self.context.target.id,
+      target: self.context.target,
+      target_id: self.context.target.id,
     };
     self.context.labels.push(label);
     self.updateLabels();
@@ -330,6 +359,7 @@ LabelBox.prototype.makeAddLabel = function() {
         d.height = d.height + dy;
         d.x = Math.min(x, d.x0);
         d.y = Math.min(y, d.y0);
+        self.updateFractions(d);
       });
     self.updateLabels();
   };
@@ -340,9 +370,7 @@ LabelBox.prototype.makeAddLabel = function() {
       d.width = Math.abs(d.width);
       d.height = Math.abs(d.height);
     });
-    // Trigger Vue update of labels.
-    self.context.labels.push({});
-    self.context.labels.pop();
+    self.emit('createLabel', self.context.labels.slice(-1)[0]);
   };
 
   return {start: start, drag: drag, end: end};
@@ -390,14 +418,20 @@ LabelBox.prototype.makeHandleDrag = function() {
         d.height -= dy;
       }
     }
+    // Update the relative measurements.
+    d.width_frac = d.width / self.width;
+    d.height_frac = d.height / self.height;
+    d.x_frac = d.x / self.width;
+    d.y_frac = d.y / self.height;
     self.updateLabels();
   };
 
   end = function(d) {
     d.isActive = false;
     // Trigger Vue update of labels.
-    self.context.labels.push({});
-    self.context.labels.pop();
+    // self.context.labels.push({});
+    // self.context.labels.pop();
+    self.emit('updateLabel', d);
   };
 
   return {start: start, drag: drag, end: end};
@@ -417,14 +451,14 @@ LabelBox.prototype.makeDragLabel = function() {
     var y = d3.event.y;
     d.x += dx;
     d.y += dy;
+    d.x_frac = d.x / self.width;
+    d.y_frac = d.y / self.height;
     self.updateLabels();
   };
 
   end = function(d) {
     d.isActive = false;
-    // Trigger Vue update of labels.
-    self.context.labels.push({});
-    self.context.labels.pop();
+    self.emit('updateLabel', d);
   };
 
   return {start: start, drag: drag, end: end};
@@ -437,10 +471,21 @@ LabelBox.prototype.updateTarget = function(currentTarget) {
       return d.isSelected;
     })
     .each(d => {
-      d.targetName = currentTarget.common_name;
+      d.target = currentTarget;
       d.target_id = currentTarget.id;
+      this.emit('updateLabel', d);
     });
   this.updateLabels();
+};
+
+LabelBox.prototype.updateFractions = function(d) {
+  var self = this;
+  d.x_frac = d.x / self.width;
+  d.y_frac = d.y / self.height;
+  d.x0_frac = d.x0 / self.width;
+  d.y0_frac = d.y0 / self.height;
+  d.width_frac = d.width / self.width;
+  d.height_frac = d.height / self.height;
 };
 
 module.exports = LabelBox;

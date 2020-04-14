@@ -5,14 +5,15 @@
 </template>
 
 <script>
-// import Component from "../component_location"
-// import {LabelCanvas} from '../api/LabelCanvas.js';
 var LabelBox = require('../api/LabelBox.js');
+var WildEmitter = require('../api/wildemitter.js');
+window.WildEmitter = WildEmitter;
+import {updateLabel, createLabelAPI, getLabels, deleteLabel} from '../api/api.js';
 
 export default {
   components: {},
 
-  props: ['imageUrl', 'target'],
+  props: ['target', 'currentImage'],
 
   data() {
     return {
@@ -29,7 +30,9 @@ export default {
 
   watch: {
     target: function() {
-      this.box.updateTarget(this.target)
+      try {
+        this.box.updateTarget(this.target);
+      } catch {}
     },
     imageUrl: function() {
       this.initLabeler();
@@ -38,36 +41,53 @@ export default {
       console.log(
         'Labels have changed (' + parseInt(Math.random() * 10 + 1) + ')',
       );
-      console.log(this.labels);
     },
   },
 
   methods: {
-    deleteLabel() {
-      this.selectedLabel.delete = true;
-      let idx = this.labels.indexOf(this.selectedLabel);
-      this.labels = this.labels.splice(idx, idx);
-      d3.selectAll('rect, text')
-        .filter(d => {
-          return d.delete;
+    createLabel(label) {
+      console.log('Creating the label!!');
+      console.log(this.currentImage);
+      createLabelAPI(this.currentImage.id, label)
+        .then(result => {
+          this.labels = result.data;
         })
-        .remove();
-      console.log(this.labels);
+        .catch(res => {
+          let message = `Unable to create label (${res.message})`;
+          this.$toasted.show(message, {type: 'error', duration: 5000});
+        });
+    },
+    updateLabel(label) {
+      console.log('Updating the label!');
+      updateLabel(label)
+    },
+    deleteLabel(label) {
+      deleteLabel(label.id)
     },
 
     initLabeler() {
       console.log('Making a new box!');
-      this.box = new LabelBox(this, this.options);
+      getLabels(this.currentImage.id).then(res => {
+        this.labels = res.data;
+        this.box = new LabelBox(this, this.options);
+        this.box.on('createLabel', this.createLabel);
+        this.box.on('updateLabel', this.updateLabel);
+        this.box.on('deleteLabel', this.deleteLabel)
+        this.box.updateLabels();
+      });
     },
   },
 
-  computed: {},
+  computed: {
+    imageUrl() {
+      return this.currentImage.url;
+    },
+  },
 
   mounted() {
-    this.initLabeler();
     var img = document.getElementById(this.options.targetImageId);
     img.onload = this.initLabeler;
-    d3.select('aside.SmColumnBoxRight').remove() // how to get rid of this?
+    d3.select('aside.SmColumnBoxRight').remove(); // how to get rid of this?
   },
 };
 </script>

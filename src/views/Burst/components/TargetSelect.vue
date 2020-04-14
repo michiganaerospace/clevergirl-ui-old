@@ -117,7 +117,11 @@ export default {
     window.addEventListener(
       'keyup',
       debounce(e => {
-        var searchText = d3.select('input.SmSearch').property('value');
+        try {
+          var searchText = d3.select('input.SmSearch').property('value');
+        } catch {
+          // Input not yet available.
+        }
         this.resultsMessage = 'Searching Database. Please Wait...';
         if (this.results.length > 0) {
           return;

@@ -1,5 +1,4 @@
 <template>
-
   <div class="flex items-center justify-center w-full h-full -mt-10">
     <div class="w-1/3 mr-5">
       <h6>Welcome to</h6>
@@ -11,7 +10,6 @@
     </div>
     <LoginForm class="w-1/3" />
   </div>
-
 </template>
 
 <script>
@@ -35,9 +33,8 @@ export default {
       }
     },
   },
-  mounted() {}
+  mounted() {},
 };
 </script>
 
-<style scoped>
-</style>
+<style scoped></style>
