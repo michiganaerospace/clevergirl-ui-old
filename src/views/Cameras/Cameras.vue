@@ -8,10 +8,16 @@
         maxlength="32"
         class="inline"
       />
-      <router-link to="/camera-create" class="ml-auto inline-flex items-center">
-        Add Camera Trap
+      <SmButton
+        kind="primary"
+        @click.native="createCamera"
+        class="mr-2 ml-auto inline-flex items-center"
+        small
+        alt="Add Camera!"
+        >
+        Camera
         <SmIcon name="upload" size="s" class="ml-2" />
-      </router-link>
+      </SmButton>
     </template>
     <h4 v-if="cameras.length == 0">No Cameras Available</h4>
 
@@ -25,6 +31,7 @@
       class="camera-box"
     >
       <GmapMap
+        v-if="camera.mode=='Camera Trap'"
         :center="cameraLatLon(camera)"
         :zoom="6"
         map-type-id="satellite"
@@ -36,16 +43,19 @@
           streetViewControl: false,
           rotateControl: false,
           fullscreenControl: false,
-          disableDefaultUi: false,
+          disableDefaultUI: true,
+          scrollwheel: false
         }"
       >
         <GmapMarker
           :position="cameraLatLon(camera)"
           :clickable="false"
           :draggable="false"
+          :scalable='false'
           @click="center = m.position"
         />
       </GmapMap>
+      <img v-else class='camera-image' src='@/assets/2x/species@2x.png'>
     </SmCard>
   </SmScrollBox>
 </template>
@@ -70,8 +80,15 @@ export default {
   watch: {},
 
   methods: {
+    createCamera() {
+      this.$router.push({name:'cameraCreate'})
+    },
     cameraLocation(camera) {
+      if (camera.mode == 'Camera Trap') {
       return `${camera.city} | ${camera.county}, ${camera.state}`
+      } else {
+        return 'Species Specific Images'
+      }
     },
     cameraLatLon(camera) {
       return {lat: camera.latitude, lng: camera.longitude};
@@ -79,7 +96,7 @@ export default {
     formatDates(camera) {
       return `${camera.deployment_date
         .slice(0, 10)
-        .replace(/-/g, '/')}—${camera.collection_date
+        .replace(/-/g, '/')}-${camera.collection_date
         .slice(0, 10)
         .replace(/-/g, '/')}`;
     },
@@ -106,7 +123,13 @@ export default {
 
 <style>
 .camera-box {
-  width: 500px;
+  width: 450px;
   cursor: pointer;
+  height: 385px;
+  margin-left: 15px;
+  margin-top: 25px;
+}
+.camera-image {
+  object-fit: scale-down;
 }
 </style>

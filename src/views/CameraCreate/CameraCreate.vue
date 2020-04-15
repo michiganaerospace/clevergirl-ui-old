@@ -1,57 +1,72 @@
 <template>
   <div class="w-full h-full flex items-center justify-center">
-    <SmCard class="w-1/2"
-            title='Add a New Camera Trap'
-            subtitle='Add a new camera trap and associated images'
-            >
-            <form @submit.prevent="submit">
+    <SmCard
+      class="w-1/2"
+      title="Add a New Camera Trap"
+      subtitle="Add a new camera trap and associated images"
+      :sidetitle="camera.mode + ' Mode'"
+    >
+      <form @submit.prevent="submit">
+        <label for="mode">Mode</label>
+        <select v-model="camera.mode" id="mode">
+          <option value="" disabled selected>Locations</option>
+          <option v-for="mode in modes" :key="mode.id" :value="mode.name">
+            {{ mode.name }}
+          </option>
+        </select>
 
-              <label for='cameraName'>Camera Name</label>
-              <input v-model="camera.name" type="text" id="cameraName" />
+        <label for="cameraName">Camera Name</label>
+        <input v-model="camera.name" type="text" id="cameraName" />
 
-              <label for="organizations">Organization</label>
-              <select v-model="camera.organization_id" id="organizations">
-                <option value="" disabled selected>Locations</option>
-                <option
-                  v-for="org in user.organizations"
-                  :key="org.id"
-                  :value="org.id"
-                  >
-                  {{ org.name }}
-                </option>
-              </select>
+        <label for="organizations">Organization</label>
+        <select v-model="camera.organization_id" id="organizations">
+          <option value="" disabled selected>Locations</option>
+          <option
+            v-for="org in user.organizations"
+            :key="org.id"
+            :value="org.id"
+          >
+            {{ org.name }}
+          </option>
+        </select>
 
-              <label for='location'>Latitude, Longitude — e.g., 42.22, -83.72</label>
-              <input v-model="camera.location" type="text" id="location" />
+        <label v-if="camera.mode == 'Camera Trap'" for="location"
+          >Latitude, Longitude — e.g., 42.22, -83.72</label
+        >
+        <input
+          v-if="camera.mode == 'Camera Trap'"
+          v-model="camera.location"
+          type="text"
+          id="location"
+        />
 
-              <label for='deployment'>Dates Deployed</label>
-              <v-date-picker
-                id='deployment'
-                class='date-picker'
-                color='gray'
-                is-dark
-                :mode='mode'
-                v-model='camera.datesDeployed'
-                />
+        <label v-if="camera.mode == 'Camera Trap'" for="deployment"
+          >Dates Deployed</label
+        >
+        <v-date-picker
+          v-if="camera.mode == 'Camera Trap'"
+          id="deployment"
+          class="date-picker"
+          color="gray"
+          is-dark
+          :mode="mode"
+          v-model="camera.datesDeployed"
+        />
 
-                <label for="notes">Field Notes</label>
-                <textarea
-                  v-model="camera.fieldNotes"
-                  type="text"
-                  id="notes"
-                  class='notes border pl-4 pt-2'
-                  />
+        <label for="notes">Field Notes</label>
+        <textarea
+          v-model="camera.fieldNotes"
+          type="text"
+          id="notes"
+          class="notes border pl-4 pt-2"
+        />
 
-                  <div class='spacer'></div>
+        <div class="spacer"></div>
 
-                  <SmButton
-                    kind="primary"
-                    type='submit'
-                    class='spacer'
-                    >
-                    Add Camera
-                  </SmButton>
-            </form>
+        <SmButton kind="primary" type="submit" class="spacer">
+          Add Camera
+        </SmButton>
+      </form>
     </SmCard>
   </div>
 </template>
@@ -69,6 +84,7 @@ export default {
     return {
       camera: {
         name: 'Camera Trap 001',
+        mode: 'Camera Trap',
         location: '43.22, -83.72',
         datesDeployed: {start: new Date(), end: this.addDays(new Date(), 10)},
         fieldNotes:
@@ -76,6 +92,7 @@ export default {
         organization_id: 1,
       },
       mode: 'range',
+      modes: [{name: 'Camera Trap', id: 1}, {name: 'Species Collection'}],
     };
   },
 
@@ -92,6 +109,7 @@ export default {
       createCamera({
         organization_id: this.camera.organization_id,
         name: this.camera.name,
+        mode: this.camera.mode,
         field_notes: this.camera.fieldNotes,
         latitude: parseFloat(lat_lon[0]),
         longitude: parseFloat(lat_lon[1]),
@@ -99,8 +117,7 @@ export default {
         collection_date: this.camera.datesDeployed.end.toISOString(),
       })
         .then(res => {
-          debugger
-          $router.push({name:'camera', params:{id: camera.id}})
+          $router.push({name: 'camera', params: {cameraId: res.data.id}});
           // $router.push(); // head off to the camera site...
         })
         .catch(res => {});

@@ -11,4 +11,9 @@ function addImages(imageList, cameraId) {
   return axios(request)
 }
 
-export {getCamera, addImages};
+function deleteCamera(cameraId) {
+  var request = constructRequest(`/cameras/${cameraId}`, 'delete');
+  return axios(request)
+}
+
+export {getCamera, addImages, deleteCamera};

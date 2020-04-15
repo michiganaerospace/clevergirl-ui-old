@@ -8,12 +8,14 @@ import VCalendar from 'v-calendar';
 import DatePicker from 'v-calendar/lib/components/date-picker.umd';
 import Toasted from 'vue-toasted';
 import * as VueGoogleMaps from 'vue2-google-maps';
+import VModal from 'vue-js-modal'
 
 for (let c of components) {
   Vue.component(c.name, c);
 }
 Vue.component('v-date-picker', DatePicker);
 Vue.use(Toasted);
+Vue.use(VModal, {dialog: true})
 
 Vue.use(VueGoogleMaps, {
   load: {

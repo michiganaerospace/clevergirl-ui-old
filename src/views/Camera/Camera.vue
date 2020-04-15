@@ -1,22 +1,36 @@
 <template>
   <SmScrollBox class="w-full h-full mx-10">
+    <v-dialog />
     <template #header v-if="camera.name.length > 0">
-      <h4 v-if="camera.bursts.length > 1">
+      <h4 v-if="camera.bursts.length > 1 || camera.bursts.length == 0">
         {{ camera.name }} — {{ camera.bursts.length }} bursts available
       </h4>
       <h4 v-else>
         {{ camera.name }} — {{ camera.bursts.length }} burst available
       </h4>
-      <SmButton
-        kind="primary"
-        @click.native="uploadImages"
-        class="ml-auto inline-flex items-center"
-        small
-        alt="Upload images to camera."
-      >
-        Upload
-        <SmIcon name="upload" size="s" class="ml-2" />
-      </SmButton>
+
+      <div class="inline-flex items-end ml-auto">
+        <SmButton
+          kind="secondary"
+          @click.native="attemptDelete"
+          class="mr-2"
+          small
+          alt="Delete Camera!"
+        >
+          Delete
+          <SmIcon name="x-circle" size="s" class="ml-2" />
+        </SmButton>
+
+        <SmButton
+          kind="primary"
+          @click.native=""
+          small
+          alt="Upload images to camera."
+        >
+          Upload
+          <SmIcon name="upload" size="s" class="ml-2" />
+        </SmButton>
+      </div>
     </template>
     <h4 v-if="camera.pending_images" class="info">
       Please wait. Preprocessing images.
@@ -37,7 +51,7 @@
 
 <script>
 // import Component from "../component_location"
-import {getCamera, addImages} from './api/api.js';
+import {getCamera, addImages, deleteCamera} from './api/api.js';
 import {openFilePicker, compileImageList} from '@/utils.js';
 
 export default {
@@ -59,6 +73,32 @@ export default {
   },
 
   methods: {
+
+    deleteCamera() {
+      console.log('DELETING THE CAMERA.')
+      deleteCamera(this.camera.id).then(this.$router.push({name: 'cameras'}))
+    },
+
+    attemptDelete() {
+      this.$modal.show('dialog', {
+        title: 'Are you sure you want to delete the camera?!',
+        text:
+          'This action is permanent and will delete all images associated with the camera.',
+        buttons: [
+          {
+            title: 'Delete the Camera',
+            handler: () => {
+              this.$modal.hide('dialog')
+              this.deleteCamera()
+            },
+          },
+          {
+            title: 'Cancel',
+          },
+        ],
+      });
+    },
+
     clickBurst(burst) {
       this.$router.push({
         name: 'burst',
@@ -158,5 +198,11 @@ export default {
 }
 .burst-preview {
   margin: 10px;
+}
+.left-button {
+  margin-right: 15px;
+}
+.v--modal-overlay {
+  margin-top: -0px !important
 }
 </style>
