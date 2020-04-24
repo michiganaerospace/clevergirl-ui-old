@@ -17,6 +17,7 @@ Vue.component('v-date-picker', DatePicker);
 Vue.use(Toasted);
 Vue.use(VModal, {dialog: true})
 
+
 Vue.use(VueGoogleMaps, {
   load: {
     key: 'AIzaSyCK_US15dtuDvMhJz_RBf7iAHFQ6Vz7c7M',

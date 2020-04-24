@@ -1,13 +1,16 @@
 <template>
-  <SmScrollBox class="w-full h-full mx-10">
+  <SmScrollBox class="w-full h-full mx-10" v-if="cameraLoaded">
     <v-dialog />
     <template #header v-if="camera.name.length > 0">
-      <h4 v-if="camera.bursts.length > 1 || camera.bursts.length == 0">
-        {{ camera.name }} — {{ camera.bursts.length }} bursts available
-      </h4>
-      <h4 v-else>
-        {{ camera.name }} — {{ camera.bursts.length }} burst available
-      </h4>
+      <h4>{{ camera.name }}</h4>
+
+      <paginate
+        v-on:page-change="handlePageChange"
+        :current-page="currentPage"
+        :number-of-pages="numberOfPages"
+      ></paginate>
+
+      <div style="display: block; max-width: 50%"></div>
 
       <div class="inline-flex items-end ml-auto">
         <SmButton
@@ -23,7 +26,7 @@
 
         <SmButton
           kind="primary"
-          @click.native=""
+          @click.native="uploadImages"
           small
           alt="Upload images to camera."
         >
@@ -47,22 +50,27 @@
       <img :src="burstPreview(burst)" class="burst-preview" />
     </SmCard>
   </SmScrollBox>
+  <SmLoading v-else />
 </template>
 
 <script>
 // import Component from "../component_location"
+import Paginate from './components/Paginate.vue';
 import {getCamera, addImages, deleteCamera} from './api/api.js';
 import {openFilePicker, compileImageList} from '@/utils.js';
 
 export default {
-  components: {},
+  components: {Paginate},
 
   props: ['cameraId'],
 
   data() {
     return {
       camera: {name: '', bursts: []},
+      cameraLoaded: false,
       errors: false,
+      currentPage: 1,
+      searched: ''
     };
   },
 
@@ -70,26 +78,34 @@ export default {
     cameraId: function() {
       this.loadCameraData();
     },
+    currentPage: function  () {
+      this.loadCameraData()
+    }
   },
 
   methods: {
+    handlePageChange(newPage) {
+      this.$router.replace({query: {page: newPage}}).catch(err=>{})
+      this.currentPage = newPage;
+    },
 
     deleteCamera() {
-      console.log('DELETING THE CAMERA.')
-      deleteCamera(this.camera.id).then(this.$router.push({name: 'cameras'}))
+      console.log('DELETING THE CAMERA.');
+      deleteCamera(this.camera.id).then(this.$router.push({name: 'cameras'}));
     },
 
     attemptDelete() {
       this.$modal.show('dialog', {
         title: 'Are you sure you want to delete the camera?!',
         text:
-          'This action is permanent and will delete all images associated with the camera.',
+          'This action is permanent and will delete all images and labels' +
+          ' associated with the camera.',
         buttons: [
           {
             title: 'Delete the Camera',
             handler: () => {
-              this.$modal.hide('dialog')
-              this.deleteCamera()
+              this.$modal.hide('dialog');
+              this.deleteCamera();
             },
           },
           {
@@ -107,10 +123,22 @@ export default {
     },
 
     loadCameraData() {
+      this.cameraLoaded = false
+      console.log('Loading Camera Data.');
       var self = this;
-      getCamera(this.cameraId)
+      this.currentPage = parseInt(this.$route.query.page) || 1
+      getCamera(this.cameraId, this.currentPage)
         .then(res => {
+          console.log('Got response.');
           self.camera = res.data;
+          // Verify that the page exists. If not, go to the first page.
+          if (this.currentPage > Math.ceil(this.camera.burst_ids.length/9)){
+            this.currentPage = 1
+            this.$router.replace({query:{page:1}})
+            this.loadCameraData()
+          }
+          console.log('Done loading camera data.');
+          this.cameraLoaded = true;
           if (this.camera.pending_images) {
             // Images are processing, so let's poll.
             setTimeout(this.loadCameraData, 2000);
@@ -135,15 +163,15 @@ export default {
     burstPreview(burst) {
       let imageUrl =
         'https://cdn.filestackcontent.com/resize=height:225/' +
-        burst.images[0].handle;
+        burst.preview_handle;
       return imageUrl;
     },
 
     numberImages(burst) {
-      if (burst.images.length > 1) {
-        return `${burst.images.length} images`;
+      if (burst.number_images > 1) {
+        return `${burst.number_images} images`;
       } else {
-        return `${burst.images.length} image`;
+        return `${burst.number_images} image`;
       }
     },
 
@@ -173,15 +201,23 @@ export default {
 
   computed: {
     sortedBursts() {
-      var bursts = this.camera.bursts;
+      var bursts = this.camera.min_bursts;
       bursts = bursts.sort((a, b) => {
         return Date.parse(a.start_time) > Date.parse(b.start_time) ? 1 : -1;
       });
       return bursts;
     },
+    numberOfPages() {
+      return Math.ceil(this.camera.burst_ids.length/9)
+    }
   },
 
   mounted() {
+    if (!this.$route.query.page) {
+      this.$router.replace({query:{page:1}})
+    } else {
+      this.currentPage = this.$route.query.page
+    }
     this.loadCameraData();
   },
 };
@@ -203,6 +239,6 @@ export default {
   margin-right: 15px;
 }
 .v--modal-overlay {
-  margin-top: -0px !important
+  margin-top: -0px !important;
 }
 </style>

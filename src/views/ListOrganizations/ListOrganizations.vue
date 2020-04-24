@@ -2,7 +2,7 @@
 
   <SmScrollBox class="w-full h-full mx-10" >
   <template #header>
-    <h3>Organizations [{{user.organizations.length}}]</h3>
+    <h3>Organizations</h3>
     <router-link
       to="/camera-upload"
       @click.native='$store.dispatch("logout")'

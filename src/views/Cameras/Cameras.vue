@@ -16,7 +16,7 @@
         alt="Add Camera!"
         >
         Camera
-        <SmIcon name="upload" size="s" class="ml-2" />
+        <SmIcon name="plus-circle" size="s" class="ml-2" />
       </SmButton>
     </template>
     <h4 v-if="cameras.length == 0">No Cameras Available</h4>

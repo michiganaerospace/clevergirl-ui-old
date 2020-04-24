@@ -1,11 +1,12 @@
 <template>
-  <div class="flex justify-center w-full h-full">
+  <div class="flex justify-center w-full h-full" v-if="burst">
     <div class="container" v-if="imagesLoaded">
       <header
+        v-if="currentImage"
         class="flex items-baseline mb-5"
         style="min-width: 1400px; position: relative"
       >
-        <h4 class="inline mr-2" v-if="camera.id > 0">
+        <h4 class="inline mr-2" v-if="camera.name">
           <a :href="cameraPath">{{ camera.name }}</a>
           {{ burst.start_time.slice(0, 10).replace(/-/g, '/') }}
         </h4>
@@ -13,7 +14,9 @@
           {{ currentImage.captured_at.slice(11, 20) }} ({{
             currentImageIndex + 1
           }}/{{ burst.images.length }})
+        <SmIcon class='info' name="info" size='m'/>
         </small>
+
         <target-select
           v-model="currentTarget"
           @input="updateTarget"
@@ -36,13 +39,15 @@
           </template>
           <smart-label
             :target="currentTarget"
-            :current-image='currentImage'
+            :current-image="currentImage"
+            v-if="imagesLoaded"
           ></smart-label>
           <template #right class="invisible"> </template>
         </SmColumnBox>
       </main>
     </div>
   </div>
+  <SmLoading v-else />
 </template>
 
 <script>
@@ -59,7 +64,7 @@ export default {
 
   data() {
     return {
-      burst: {images: []},
+      burst: null,
       currentImageIndex: 0,
       imagesLoaded: false,
       camera: {id: 0},
@@ -69,22 +74,30 @@ export default {
   },
 
   watch: {
-    currentImage() {
-      console.log(this.currentImage)
-    }
+    currentImageIndex() {
+      this.setIndex();
+    },
+    index() {
+      this.currentImageIndex = this.index;
+    },
+    burstId() {
+      this.burst = null;
+      this.loadBurst();
+    },
   },
 
   methods: {
     updateTarget(currentTarget) {
       this.currentTarget = currentTarget;
-      console.log(currentTarget);
     },
+
     loadBurst() {
       getBurst(this.burstId)
         .then(res => {
           this.burst = res.data;
-          this.currentImageIndex = 0;
+          this.currentImageIndex = parseInt(this.$route.query.index) || 0;
           this.imagesLoaded = true;
+          this.setIndex();
         })
         .catch(res => {
           let message = `Burst at &nbsp; <b>${$router.currentRoute.path}</b> &nbsp; \
@@ -107,8 +120,41 @@ export default {
         });
     },
 
+    setIndex() {
+      if (this.index != this.currentImageIndex) {
+        this.$router.push({
+          name: 'burst',
+          query: {index: this.currentImageIndex},
+        });
+      }
+    },
+
     selectImage(index) {
       this.currentImageIndex = index;
+    },
+
+    nextBurst() {
+      var nextBurstId =
+        this.camera.burst_ids[parseInt(this.currentBurstIndex) + 1] ||
+        this.camera.burst_ids[0];
+
+      this.burst = null;
+      this.imagesLoaded = false;
+      this.$router.replace({
+        name: 'burst',
+        params: {cameraId: this.cameraId, burstId: parseInt(nextBurstId)},
+      });
+    },
+
+    prevBurst() {
+      var prevBurstId =
+        this.camera.burst_ids[this.currentBurstIndex - 1] ||
+        this.camera.burst_ids.slice(-1)[0];
+      this.imagesLoaded = false;
+      this.$router.replace({
+        name: 'burst',
+        params: {cameraId: this.cameraId, burstId: prevBurstId},
+      });
     },
   },
 
@@ -119,10 +165,31 @@ export default {
       }
       return this.burst.images.sort(compare);
     },
+
     currentImage() {
       return this.burst.images[this.currentImageIndex];
     },
 
+    currentBurstIndex() {
+      var idx = 0;
+      var currentBurstIndex = null;
+      var self = this;
+      this.camera.burst_ids.forEach(id => {
+        try {
+          if (id == self.burst.id) {
+            currentBurstIndex = idx;
+          }
+        } catch {
+          debugger;
+        }
+        idx += 1;
+      });
+      return currentBurstIndex;
+    },
+
+    index() {
+      return this.$route.query.index;
+    },
     currentImageUrl() {
       return (
         // 'https://cdn.filestackcontent.com/resize=height:600/' +
@@ -136,7 +203,11 @@ export default {
     },
 
     cameraPath() {
-      return '#/cameras/' + this.camera.id;
+      return '#/cameras/' + this.cameraId;
+    },
+
+    currentPage() {
+      return Math.ceil((this.currentBurstIndex + 1) / 9);
     },
   },
 
@@ -145,16 +216,40 @@ export default {
     this.loadCameraData();
     var self = this;
     window.addEventListener('keydown', e => {
-      if (e.keyCode == 39 || e.keyCode == 40) {
-        this.currentImageIndex += 1;
-        if (self.currentImageIndex > self.burst.images.length - 1) {
-          self.currentImageIndex = 0;
+      if (!this.burst) {
+        return;
+      }
+      if (e.keyCode == 39) {
+        // RIGHT ARROW
+        if (e.shiftKey) {
+          this.nextBurst();
+        } else if (self.burst.images.length > 1) {
+          d3.select('#canvas').remove();
+          self.currentImageIndex += 1;
+          if (self.currentImageIndex > self.burst.images.length - 1) {
+            self.currentImageIndex = 0;
+          }
         }
-      } else if (e.keyCode == 37 || e.keyCode == 38) {
-        this.currentImageIndex -= 1;
-        if (this.currentImageIndex < 0) {
-          this.currentImageIndex = this.burst.images.length - 1;
+      } else if (e.keyCode == 37) {
+        // LEFT ARROW
+        if (e.shiftKey) {
+          self.prevBurst();
+        } else if (self.burst.images.length > 1) {
+          d3.select('#canvas').remove();
+          self.currentImageIndex -= 1;
+          if (self.currentImageIndex < 0) {
+            self.currentImageIndex = self.burst.images.length - 1;
+          }
         }
+      } else if (e.keyCode == 38) {
+        console.log('I think the page is ' + self.currentPage);
+        self.$router
+          .push({
+            name: 'camera',
+            params: {cameraId: self.cameraId},
+            query: {page: self.currentPage},
+          })
+          .catch(err => {});
       }
     });
   },
@@ -176,7 +271,7 @@ export default {
   margin-top: 8px;
 }
 .active {
-  border: 2px solid blue;
+  border: 2px solid #47e5f2;
 }
 .container {
   height: 100%;
@@ -193,5 +288,8 @@ export default {
 }
 .invisible {
   display: none;
+}
+.info:hover {
+  color: blue
 }
 </style>

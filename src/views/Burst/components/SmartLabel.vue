@@ -1,5 +1,5 @@
 <template>
-  <div id="label-container" class="label-container">
+  <div id="label-container" class="label-container" v-if="currentImage">
     <img id="active-image" class="image-box" :src="imageUrl" />
   </div>
 </template>
@@ -8,7 +8,12 @@
 var LabelBox = require('../api/LabelBox.js');
 var WildEmitter = require('../api/wildemitter.js');
 window.WildEmitter = WildEmitter;
-import {updateLabel, createLabelAPI, getLabels, deleteLabel} from '../api/api.js';
+import {
+  updateLabel,
+  createLabelAPI,
+  getLabels,
+  deleteLabel,
+} from '../api/api.js';
 
 export default {
   components: {},
@@ -35,44 +40,48 @@ export default {
       } catch {}
     },
     imageUrl: function() {
-      this.initLabeler();
-    },
-    labels: function() {
-      console.log(
-        'Labels have changed (' + parseInt(Math.random() * 10 + 1) + ')',
-      );
+      if (this.currentImage) {
+        this.initLabeler();
+      }
     },
   },
 
   methods: {
     createLabel(label) {
-      console.log('Creating the label!!');
-      console.log(this.currentImage);
       createLabelAPI(this.currentImage.id, label)
         .then(result => {
           this.labels = result.data;
+          this.refreshBox();
         })
         .catch(res => {
           let message = `Unable to create label (${res.message})`;
           this.$toasted.show(message, {type: 'error', duration: 5000});
         });
     },
+
+    refreshBox(label) {
+      this.box = new LabelBox(this, this.options);
+      this.box.on('createLabel', this.createLabel);
+      this.box.on('updateLabel', this.updateLabel);
+      this.box.on('deleteLabel', this.deleteLabel);
+      this.box.updateLabels();
+    },
+
     updateLabel(label) {
-      console.log('Updating the label!');
-      updateLabel(label)
+      console.log('Updating the label.');
+      updateLabel(label);
     },
     deleteLabel(label) {
-      deleteLabel(label.id)
+      deleteLabel(label.id);
     },
 
     initLabeler() {
-      console.log('Making a new box!');
       getLabels(this.currentImage.id).then(res => {
         this.labels = res.data;
         this.box = new LabelBox(this, this.options);
         this.box.on('createLabel', this.createLabel);
         this.box.on('updateLabel', this.updateLabel);
-        this.box.on('deleteLabel', this.deleteLabel)
+        this.box.on('deleteLabel', this.deleteLabel);
         this.box.updateLabels();
       });
     },
@@ -80,7 +89,11 @@ export default {
 
   computed: {
     imageUrl() {
-      return this.currentImage.url;
+      if (this.currentImage) {
+        return this.currentImage.url;
+      } else {
+        return '';
+      }
     },
   },
 
@@ -127,6 +140,9 @@ export default {
 .lowerRight {
   cursor: nwse-resize;
 }
+.upperLeft {
+  cursor: nwse-resize;
+}
 .handle:hover {
   fill: #47e5f2;
   fill-opacity: 1;
@@ -134,7 +150,8 @@ export default {
   stroke-width: 1;
 }
 .text-label {
-  fill: 'white';
+  fill: 'black';
+  z-index: 100;
   cursor: pointer;
   text-transform: uppercase;
   font-size: 16px;
@@ -153,7 +170,7 @@ export default {
 }
 .text-rect {
   fill: #47e5f2;
-  fill-opacity: 0.8;
+  fill-opacity: 1;
   cursor: pointer;
 }
 .selected {

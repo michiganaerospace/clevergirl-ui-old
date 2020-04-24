@@ -10,7 +10,7 @@ function LabelBox(context, options) {
   this.height = imageSize.height;
   this.width = imageSize.width;
   this.createSVG();
-  // this.augmentLabels()
+  this.augmentLabels()
   this.updateLabels();
 }
 
@@ -123,21 +123,14 @@ LabelBox.prototype.mousePosition = function() {
 LabelBox.prototype.updateLabels = function() {
   var self = this;
 
-  d3.selectAll('rect.label').each(d => {
-    d.x = d.x_frac * self.width;
-    d.y = d.y_frac * self.height;
-    d.x0 = d.x0_frac * self.width;
-    d.y0 = d.y0_frac * self.height;
-    d.width = d.width_frac * self.width;
-    d.height = d.height_frac * self.height;
-  });
-
   updateCrosshair = self.makeCrosshairUpdate();
-  onLabelAdd = d3
+  var onLabelAdd = d3
     .select('#canvas')
-    .selectAll('rect.label')
+    .selectAll('g.group')
     .data(self.context.labels)
-    .enter();
+    .enter()
+    .append('g')
+    .attr('class', 'group');
 
   // Add the rects
   dragLabel = self.makeDragLabel();
@@ -161,8 +154,19 @@ LabelBox.prototype.updateLabels = function() {
     .append('rect')
     .attr('class', 'text-rect')
     .attr('height', self.options.textHeight);
+  onLabelAdd
+    .append('text')
+    .attr('class', 'text-label')
+    .style('color', 'black');
 
-  onLabelAdd.append('text').attr('class', 'text-label');
+  d3.selectAll('rect.label').each(d => {
+    d.x = d.x_frac * self.width;
+    d.y = d.y_frac * self.height;
+    d.x0 = d.x0_frac * self.width;
+    d.y0 = d.y0_frac * self.height;
+    d.width = d.width_frac * self.width;
+    d.height = d.height_frac * self.height;
+  });
 
   d3.selectAll('rect.label')
     .attr('x', d => {
@@ -261,15 +265,24 @@ LabelBox.prototype.updateLabels = function() {
       // Allow user to delete if editing an INPUT field.
       return;
     }
-    d3.selectAll('text,label,rect')
+    d3.selectAll('g.group')
       .filter(d => {
+        if (d.isSelected) {
+        }
         return d.isSelected;
       })
       .each(d => {
-        var idx = self.context.labels.indexOf(d);
-        if (idx > -1) {
+        // Delete each selected label (from both array and server).
+        var toDelete = null;
+        self.context.labels.forEach(l => {
+          if (l.x == d.x) {
+            toDelete = l;
+          }
+        });
+        if (toDelete) {
+          var idx = self.context.labels.indexOf(toDelete);
           self.context.labels.splice(idx, 1);
-          self.emit('deleteLabel', d);
+          self.emit('deleteLabel', toDelete);
         }
       })
       .remove();
@@ -280,6 +293,9 @@ LabelBox.prototype.updateLabels = function() {
     .on('click', d => {
       d3.event.preventDefault();
       d3.event.stopPropagation();
+      if (!d.hasOwnProperty('isSelected')) {
+        d.isSelected = false
+      }
       d.isSelected = !d.isSelected;
       d3.selectAll('rect.label,rect.text-rect,rect.handle').classed(
         'selected',
@@ -330,9 +346,9 @@ LabelBox.prototype.makeAddLabel = function() {
       width: 1,
       height: 1,
       x_frac: m.x / self.width,
-      y_frac: m.x / self.height,
+      y_frac: m.y / self.height,
       x0_frac: m.x / self.width,
-      y0_frac: m.x / self.height,
+      y0_frac: m.y / self.height,
       height_frac: 1 / self.height,
       width_frac: 1 / self.width,
       isActive: true,
@@ -428,9 +444,6 @@ LabelBox.prototype.makeHandleDrag = function() {
 
   end = function(d) {
     d.isActive = false;
-    // Trigger Vue update of labels.
-    // self.context.labels.push({});
-    // self.context.labels.pop();
     self.emit('updateLabel', d);
   };
 
