@@ -10,7 +10,6 @@ function getCamera(cameraId, page) {
 function addImages(imageList, cameraId) {
   var request = constructRequest(`/cameras/${cameraId}/images`, 'post');
   request.data = imageList
-  debugger;
   return axios(request)
 }
 
