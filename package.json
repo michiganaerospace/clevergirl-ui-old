@@ -10,7 +10,7 @@
     "@springmatter/components": "^4.6.0",
     "axios": "^0.19.2",
     "core-js": "^3.4.3",
-    "d3": "^5.15.0",
+    "d3": "^7.6.1",
     "v-calendar": "^1.0.0-beta.23",
     "vue": "^2.6.10",
     "vue-airbnb-style-datepicker": "^2.7.1",
